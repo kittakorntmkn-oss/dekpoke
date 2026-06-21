@@ -13363,14 +13363,23 @@
       if (alpha <= 0.001) return;
 
       const rect = Number(tip.buttonId) === 2 ? spinBtn2 : spinBtn1;
-      const compactCanvas = canvas.width <= 780;
-      const maxWidth = Math.min(390, Math.max(220, canvas.width * (compactCanvas ? 0.35 : 0.42)));
+
+      /*
+        Final mobile-safe tooltip:
+        Keep the bubble centered inside a safe visual area, while the pointer still
+        points toward the active button. Font is kept readable on phones.
+      */
+      const safeLeft = 96;
+      const safeRight = 96;
+      const safeWidth = Math.max(300, canvas.width - safeLeft - safeRight);
+      const maxWidth = Math.min(470, safeWidth);
       const paddingX = 24;
-      const paddingY = 12;
-      let fontSize = compactCanvas ? 18 : 20;
-      const minimumFontSize = compactCanvas ? 16 : 18;
-      let lineHeight = Math.round(fontSize * 1.12);
-      const cx = rect.x + rect.width * 0.5;
+      const paddingY = 13;
+      let fontSize = 19;
+      const minimumFontSize = 16;
+      let lineHeight = Math.round(fontSize * 1.16);
+      const buttonCx = rect.x + rect.width * 0.5;
+      const bubbleCenterX = canvas.width * 0.5;
       const freeSpinVisible = Number(tip.buttonId) === 2
         && state.freeSpin?.canUse
         && Number(state.freeSpin?.available || 0) > 0
@@ -13406,31 +13415,31 @@
           }
           line = candidate;
         }
-        if (line.trim()) {
-          lines.push(line.trim());
-        }
+        if (line.trim()) lines.push(line.trim());
         const finalLines = lines.length ? lines : [text];
         return {
           lines: finalLines.slice(0, 2),
           width: finalLines.reduce((max, current) => Math.max(max, ctx.measureText(current).width), 0)
         };
       };
+
       while (fontSize > minimumFontSize) {
         const fitted = buildTooltipLines(fontSize);
         visibleLines = fitted.lines;
         longestLineWidth = fitted.width;
-        if (visibleLines.length <= 2 && longestLineWidth <= maxWidth - paddingX * 2) {
-          break;
-        }
+        if (visibleLines.length <= 2 && longestLineWidth <= maxWidth - paddingX * 2) break;
         fontSize -= 1;
       }
-      lineHeight = Math.round(fontSize * 1.12);
-      const height = Math.max(48, paddingY * 2 + visibleLines.length * lineHeight);
-      const width = Math.min(maxWidth, Math.max(160, longestLineWidth + paddingX * 2));
-      const cy = rect.y - (freeSpinVisible ? 140 : 54) - Math.max(0, visibleLines.length - 1) * 8 + Math.sin(ts / 280) * 1.5;
-      const x = cx - width * 0.5;
+
+      lineHeight = Math.round(fontSize * 1.16);
+      const height = Math.max(52, paddingY * 2 + visibleLines.length * lineHeight);
+      const width = Math.min(maxWidth, Math.max(270, longestLineWidth + paddingX * 2));
+      const cy = rect.y - (freeSpinVisible ? 150 : 62) - Math.max(0, visibleLines.length - 1) * 8 + Math.sin(ts / 280) * 1.5;
+      const x = Math.max(safeLeft, Math.min(canvas.width - safeRight - width, bubbleCenterX - width * 0.5));
       const y = cy - height * 0.5;
       const tailY = y + height - 1;
+      const tailX = Math.max(x + 32, Math.min(x + width - 32, buttonCx));
+      const textX = x + width * 0.5;
 
       ctx.shadowColor = "rgba(52, 41, 72, 0.18)";
       ctx.shadowBlur = 16;
@@ -13446,9 +13455,9 @@
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(cx - 12, tailY - 1);
-      ctx.lineTo(cx + 12, tailY - 1);
-      ctx.lineTo(cx, tailY + 16);
+      ctx.moveTo(tailX - 12, tailY - 1);
+      ctx.lineTo(tailX + 12, tailY - 1);
+      ctx.lineTo(tailX, tailY + 16);
       ctx.closePath();
       ctx.fillStyle = "rgba(248,251,255,0.95)";
       ctx.fill();
@@ -13461,8 +13470,9 @@
       ctx.fillStyle = "#574368";
       const textStartY = y + (height - visibleLines.length * lineHeight) * 0.5 + lineHeight * 0.5;
       for (let index = 0; index < visibleLines.length; index += 1) {
-        ctx.fillText(visibleLines[index], cx, textStartY + index * lineHeight);
+        ctx.fillText(visibleLines[index], textX, textStartY + index * lineHeight);
       }
+
       ctx.restore();
     }
 
